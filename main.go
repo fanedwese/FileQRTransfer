@@ -74,12 +74,12 @@ func main() {
 			<html><head>
 			<meta charset="UTF-8">
 			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<title>File Transfer</title>
+			<title>FileQRTransfer</title>
 			<style>
 				body { font-family: Arial, sans-serif; padding: 20px; margin: 0; background: #f0f0f0; }
 				h1 { text-align: center; }
 				form { max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-				input[type="file"] { width: 100%; padding: 15px; font-size: 18px; border: 2px dashed #ccc; border-radius: 10px; margin-bottom: 20px; }
+				input[type="file"] { width: 100%; padding: 15px; font-size: 18px; border: 2px dashed #ccc; border-radius: 10px; margin-bottom: 20px; box-sizing: border-box; }
 				input[type="submit"] { width: 100%; padding: 15px; font-size: 20px; background: #4CAF50; color: white; border: none; border-radius: 10px; cursor: pointer; }
 				input[type="submit"]:hover { background: #45a049; }
 				@media (max-width: 600px) {
@@ -98,6 +98,7 @@ func main() {
 
 	localIP := getLocalIP()
 	uploadURL := "http://" + localIP + ":8080/upload"
+	fmt.Println("FileQRTransfer v1.0 (alpha)")
 	fmt.Println("Сервер запущен!")
 	fmt.Println("Открой на ПК: http://localhost:8080/upload")
 	fmt.Println("С телефона в той же Wi-Fi сети: " + uploadURL)
