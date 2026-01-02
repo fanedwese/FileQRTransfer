@@ -8,6 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"unicode"
+
+	"os/exec"
+
+	"github.com/skip2/go-qrcode"
 )
 
 func getLocalIP() string {
@@ -96,12 +100,33 @@ func main() {
 		}
 	})
 
+	http.HandleFunc("/qr", func(w http.ResponseWriter, r *http.Request) {
+		localIP := getLocalIP()
+		url := "http://" + localIP + ":8080/upload"
+
+		qr, err := qrcode.New(url, qrcode.Medium)
+		if err != nil {
+			http.Error(w, "Не смог сделать QR код", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "image/png")
+		qr.Write(512, w)
+	})
+
+	fmt.Println("QR код готов! Открой в браузере: http://localhost:8080/qr")
+	fmt.Println("Поднеси телефон - сканируй и сразу грузи файлы")
+
 	localIP := getLocalIP()
 	uploadURL := "http://" + localIP + ":8080/upload"
 	fmt.Println("FileQRTransfer v1.0 (alpha)")
 	fmt.Println("Сервер запущен!")
 	fmt.Println("Открой на ПК: http://localhost:8080/upload")
 	fmt.Println("С телефона в той же Wi-Fi сети: " + uploadURL)
+	go func() {
+		url := "http://localhost:8080/qr"
+		exec.Command("cmd", "/c", "start", "", url).Start()
+	}()
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		fmt.Println("Ошибка запуска сервера: ", err)
 	}
