@@ -75,28 +75,148 @@ func main() {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 			fmt.Fprint(w, `<!DOCTYPE html>
-			<html><head>
-			<meta charset="UTF-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<title>FileQRTransfer</title>
-			<style>
-				body { font-family: Arial, sans-serif; padding: 20px; margin: 0; background: #f0f0f0; }
-				h1 { text-align: center; }
-				form { max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-				input[type="file"] { width: 100%; padding: 15px; font-size: 18px; border: 2px dashed #ccc; border-radius: 10px; margin-bottom: 20px; box-sizing: border-box; }
-				input[type="submit"] { width: 100%; padding: 15px; font-size: 20px; background: #4CAF50; color: white; border: none; border-radius: 10px; cursor: pointer; }
-				input[type="submit"]:hover { background: #45a049; }
-				@media (max-width: 600px) {
-					input { font-size: 20px; padding: 20px; }
-				}
-			</style>
-			</head><body>
-			<h1>Загрузка файлов на ПК</h1>
-			<form enctype="multipart/form-data" action="/upload" method="post">
-				<input type="file" name="file" multiple>
+		<html><head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>FileQRTransfer</title>
+		<style>
+			body { font-family: Arial, sans-serif; padding: 20px; margin: 0; background: #f0f0f0; }
+			h1 { text-align: center; }
+			#uploadForm { max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+			input[type="file"] { width: 100%; padding: 15px; font-size: 18px; border: 2px dashed #ccc; border-radius: 10px; margin-bottom: 20px; box-sizing: border-box; }
+			input[type="submit"] { width: 100%; padding: 15px; font-size: 20px; background: #4CAF50; color: white; border: none; border-radius: 10px; cursor: pointer; }
+			#progressContainer { width: 100%; background: #ddd; border-radius: 10px; margin: 20px 0; display: none; }
+			#progressBar { width: 0%; height: 30px; background: #00414b; text-align: center; line-height: 30px; color: white; border-radius: 10px; }
+			#status { text-align: center; font-size: 18px; }
+		</style>
+		</head><body>
+		<h1>Загрузка файлов на ПК</h1>
+		<div id="uploadForm">
+			<form id="form">
+				<input type="file" name="file" id="fileInput" multiple>
 				<input type="submit" value="Загрузить файлы">
 			</form>
-			</body></html>`)
+			<div id="progressContainer">
+				<div id="progressBar">0%</div>
+			</div>
+			<div id="status"></div>
+		</div>
+
+	<script>
+		const form = document.getElementById('form');
+		const fileInput = document.getElementById('fileInput');
+		const status = document.getElementById('status');
+		const progressContainer = document.getElementById('progressContainer');
+		const progressBar = document.getElementById('progressBar');
+
+		// Контейнер для списка файлов
+		const fileList = document.createElement('div');
+		fileList.id = 'fileList';
+		fileList.style.marginTop = '20px';
+		fileList.style.padding = '10px';
+		fileList.style.background = '#f9f9f9';
+		fileList.style.borderRadius = '10px';
+		fileInput.parentNode.insertBefore(fileList, fileInput.nextSibling);
+
+		// Обновление списка выбранных файлов
+		function updateFileList() {
+			fileList.innerHTML = '<h3>Выбранные файлы:</h3>';
+			const files = fileInput.files;
+			if (files.length === 0) {
+				fileList.innerHTML += '<p>Ничего не выбрано</p>';
+				return;
+			}
+
+			const ul = document.createElement('ul');
+			ul.style.listStyle = 'none';
+			ul.style.padding = '0';
+
+			for (let i = 0; i < files.length; i++) {
+				const li = document.createElement('li');
+				li.style.padding = '10px';
+				li.style.background = '#fff';
+				li.style.margin = '5px 0';
+				li.style.borderRadius = '8px';
+				li.style.display = 'flex';
+				li.style.justifyContent = 'space-between';
+				li.style.alignItems = 'center';
+				li.style.wordBreak = 'break-all';
+
+				li.textContent = files[i].name + ' (' + (files[i].size / 1024 / 1024).toFixed(2) + ' MB)';
+
+				const removeBtn = document.createElement('button');
+				removeBtn.textContent = 'Удалить';
+				removeBtn.style.background = '#f44336';
+				removeBtn.style.color = 'white';
+				removeBtn.style.border = 'none';
+				removeBtn.style.padding = '5px 10px';
+				removeBtn.style.borderRadius = '5px';
+				removeBtn.style.cursor = 'pointer';
+				removeBtn.onclick = (function(index) {
+					return function() {
+						const dt = new DataTransfer();
+						for (let j = 0; j < files.length; j++) {
+							if (j !== index) dt.items.add(files[j]);
+						}
+						fileInput.files = dt.files;
+						updateFileList();
+					}
+				})(i);
+
+				li.appendChild(removeBtn);
+				ul.appendChild(li);
+			}
+			fileList.appendChild(ul);
+		}
+
+		// Обновляем список при выборе файлов
+		fileInput.addEventListener('change', updateFileList);
+
+		// Загрузка с прогрессом (твой старый код, но с небольшим фиксом)
+		form.addEventListener('submit', function(e) {
+			e.preventDefault();
+			const files = fileInput.files;
+			if (files.length === 0) {
+				status.textContent = "Выбери файлы!";
+				return;
+			}
+
+			const xhr = new XMLHttpRequest();
+			xhr.open('POST', '/upload', true);
+
+			xhr.upload.onprogress = function(event) {
+				if (event.lengthComputable) {
+					const percent = (event.loaded / event.total) * 100;
+					progressBar.style.width = percent + '%';
+					progressBar.textContent = Math.round(percent) + '%';
+					progressContainer.style.display = 'block';
+				}
+			};
+
+			xhr.onload = function() {
+				if (xhr.status === 200) {
+					status.textContent = "Все файлы загружены!";
+					progressBar.style.width = '100%';
+					progressBar.textContent = '100%';
+					fileInput.value = ''; // очищаем выбор
+					updateFileList(); // очищаем список
+				} else {
+					status.textContent = "Ошибка загрузки";
+				}
+			};
+
+			const formData = new FormData();
+			for (let file of files) {
+				formData.append('file', file);
+			}
+
+			xhr.send(formData);
+		});
+
+		// Инициализация списка
+		updateFileList();
+	</script>
+		</body></html>`)
 		}
 	})
 
@@ -119,7 +239,8 @@ func main() {
 
 	localIP := getLocalIP()
 	uploadURL := "http://" + localIP + ":8080/upload"
-	fmt.Println("FileQRTransfer v1.0 (alpha)")
+	fmt.Println("FileQRTransfer v1.1 (alpha)")
+	fmt.Println("Last update: 04.01.2026")
 	fmt.Println("Сервер запущен!")
 	fmt.Println("Открой на ПК: http://localhost:8080/upload")
 	fmt.Println("С телефона в той же Wi-Fi сети: " + uploadURL)
